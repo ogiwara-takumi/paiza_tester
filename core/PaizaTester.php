@@ -18,7 +18,12 @@ class PaizaTester {
 	/**
 	 * テストケースファイルの拡張子
 	 */
-	const TESTCASE_EXTENSION = 'txt';
+	const TESTCASE_EXTENSION = '_test.txt';
+
+	/**
+	 * 結果ファイルの拡張子
+	 */
+	const RESULT_EXTENSION = '_result.txt';
 
 	/**
 	 * コードを実行する際のコマンド
@@ -77,7 +82,30 @@ class PaizaTester {
 	 */
 	public function getTestCase() {
 		if (empty($this->_testcase)) {
-			$this->_testcase = glob($this->getCaseDir() . '*.' . self::TESTCASE_EXTENSION);
+			$files = glob($this->getCaseDir() . '*.txt');
+			if (empty($files)) {
+				return $this->_testcase;
+			}
+			foreach ($files as $file) {
+				$key = null;
+				if (strpos($file, self::TESTCASE_EXTENSION) !== false) {
+					$key = 'test';
+				}
+				else if (strpos($file, self::RESULT_EXTENSION) !== false) {
+					$key = 'result';
+				}
+				else {
+					continue;
+				}
+				list($number, ) = explode('_', $file);
+				if (empty($this->_testcase[$number])) {
+					$this->_testcase[$number] = array(
+						'test' => false,
+						'result' => false
+					);
+				}
+				$this->_testcase[$number][$key] = $file;
+			}
 		}
 		return $this->_testcase;
 	}
@@ -88,11 +116,24 @@ class PaizaTester {
 	public function run() {
 		echo str_repeat('-', 50) . PHP_EOL;
 		printf('PaizaTester' . PHP_EOL);
-		foreach ($this->getTestCase() as $testcase_file) {
-			$cmd = sprintf(self::COMMAND_FORMAT, $this->getCodeFile(), $testcase_file);
+		foreach ($this->getTestCase() as $file) {
+			$cmd = sprintf(self::COMMAND_FORMAT, $this->getCodeFile(), $file['test']);
 			$result = shell_exec($cmd);
+			$answer = false;
+			if (!empty($file['result']) && file_exists($file['result'])) {
+				$answer = file_get_contents($file['result']);
+			}
 			echo str_repeat('-', 50) . PHP_EOL;
-			printf('%s' . PHP_EOL . '%s' . PHP_EOL . PHP_EOL, $cmd, $result);
+			echo $cmd . PHP_EOL;
+			echo $result . PHP_EOL;
+			if ($answer && trim($result) === trim($answer)) {
+				echo '... Success' . PHP_EOL;
+			} else {
+				echo '... Failed' . PHP_EOL;
+				echo 'Answer = ' . $answer . PHP_EOL;
+			}
+			
+			echo PHP_EOL;
 		}
 	}
 
