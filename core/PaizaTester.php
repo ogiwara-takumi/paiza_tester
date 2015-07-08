@@ -8,7 +8,7 @@ class PaizaTester {
 	/**
 	 * 実行コードのファイルフォーマット
 	 */
-	const CODE_FILE_FORMAT = 'code/%s.php';
+	const CODE_FILE_FORMAT = 'code/%s%s.php';
 
 	/**
 	 * テストケースディレクトリのフォーマット
@@ -64,8 +64,11 @@ class PaizaTester {
 	 * コードファイルを取得
 	 * @return string
 	 */
-	public function getCodeFile() {
-		return sprintf(self::CODE_FILE_FORMAT, $this->getCode());
+	public function getCodeFile($suffix = null) {
+		if (!is_null($suffix)) {
+			$suffix = '_' . $suffix;
+		}
+		return sprintf(self::CODE_FILE_FORMAT, $this->getCode(), $suffix);
 	}
 
 	/**
@@ -116,24 +119,31 @@ class PaizaTester {
 	public function run() {
 		echo str_repeat('-', 50) . PHP_EOL;
 		printf('PaizaTester' . PHP_EOL);
+		$codes = glob(sprintf(self::CODE_FILE_FORMAT, $this->getCode(), '*'));
 		foreach ($this->getTestCase() as $file) {
-			$cmd = sprintf(self::COMMAND_FORMAT, $this->getCodeFile(), $file['test']);
-			$result = shell_exec($cmd);
-			$answer = false;
-			if (!empty($file['result']) && file_exists($file['result'])) {
-				$answer = file_get_contents($file['result']);
+			foreach ($codes as $code) {
+				$suffix = null;
+				if (preg_match('/' . $this->getCode() . '_(.*)\.php/', $code, $match)) {
+					$suffix = $match['1'];
+				}
+				$cmd = sprintf(self::COMMAND_FORMAT, $this->getCodeFile($suffix), $file['test']);
+				$result = shell_exec($cmd);
+				$answer = false;
+				if (!empty($file['result']) && file_exists($file['result'])) {
+					$answer = file_get_contents($file['result']);
+				}
+				echo str_repeat('-', 50) . PHP_EOL;
+				echo $cmd . PHP_EOL;
+				echo $result . PHP_EOL;
+				if ($answer && trim($result) === trim($answer)) {
+					echo '... Success' . PHP_EOL;
+				} else {
+					echo '... Failed' . PHP_EOL;
+					echo 'Answer = ' . $answer . PHP_EOL;
+				}
+
+				echo PHP_EOL;
 			}
-			echo str_repeat('-', 50) . PHP_EOL;
-			echo $cmd . PHP_EOL;
-			echo $result . PHP_EOL;
-			if ($answer && trim($result) === trim($answer)) {
-				echo '... Success' . PHP_EOL;
-			} else {
-				echo '... Failed' . PHP_EOL;
-				echo 'Answer = ' . $answer . PHP_EOL;
-			}
-			
-			echo PHP_EOL;
 		}
 	}
 
