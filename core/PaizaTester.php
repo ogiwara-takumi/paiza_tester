@@ -72,6 +72,14 @@ class PaizaTester {
 	}
 
 	/**
+	 * 全てのコードファイルを取得
+	 * @return array
+	 */
+	public function getAllCodeFile() {
+		return glob(sprintf(self::CODE_FILE_FORMAT, $this->getCode(), '*'));
+	}
+
+	/**
 	 * テストケースディレクトリを取得
 	 * @return string
 	 */
@@ -119,14 +127,19 @@ class PaizaTester {
 	public function run() {
 		echo str_repeat('-', 50) . PHP_EOL;
 		printf('PaizaTester' . PHP_EOL);
-		$codes = glob(sprintf(self::CODE_FILE_FORMAT, $this->getCode(), '*'));
+		$codes = $this->getAllCodeFile();
 		foreach ($this->getTestCase() as $file) {
 			foreach ($codes as $code) {
 				$suffix = null;
 				if (preg_match('/' . $this->getCode() . '_(.*)\.php/', $code, $match)) {
 					$suffix = $match['1'];
 				}
-				$cmd = sprintf(self::COMMAND_FORMAT, $this->getCodeFile($suffix), $file['test']);
+				$codefile = $this->getCodeFile($suffix);
+				if (!file_exists($codefile)) {
+					// コードファイルが存在しない場合は次へ
+					continue;
+				}
+				$cmd = sprintf(self::COMMAND_FORMAT, $codefile, $file['test']);
 				$result = shell_exec($cmd);
 				$answer = false;
 				if (!empty($file['result']) && file_exists($file['result'])) {
@@ -158,7 +171,7 @@ class PaizaTester {
 		}
 		$this->_code = $code;
 		$this->_testcase = array();
-		if (!file_exists($this->getCodeFile())) {
+		if (!file_exists($this->getCodeFile()) && count($this->getAllCodeFile()) === 0) {
 			throw new Exception('コードファイルが存在しません。');
 		}
 		if (!is_dir($this->getCaseDir())) {
